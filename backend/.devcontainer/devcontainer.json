@@ -1,0 +1,32 @@
+{
+  "name": "Sistema de Votaciones DevContainer",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+
+  "features": {},
+
+  "postCreateCommand": "cd backend && npm install && cd ../frontend && npm install",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  },
+
+  "forwardPorts": [3000, 5173],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Backend"
+    },
+    "5173": {
+      "label": "Frontend (Vite)"
+    }
+  },
+
+  "remoteUser": "node"
+}
