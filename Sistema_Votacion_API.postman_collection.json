@@ -1,0 +1,182 @@
+{
+  "info": {
+    "_postman_id": "sistema-votacion-2026",
+    "name": "Sistema Votacion - API",
+    "description": "Coleccion de endpoints para el sistema de votacion con arquitectura por capas (Express + Supabase). Actualizada para el flujo de votacion por sede, facultad y programa antes de emitir el voto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "sedeId",
+      "value": "1"
+    },
+    {
+      "key": "facultadId",
+      "value": "1"
+    },
+    {
+      "key": "programaId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "🟢 Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/"
+      }
+    },
+    {
+      "name": "🏫 Obtener Sedes",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/sedes"
+      }
+    },
+    {
+      "name": "🎓 Obtener Facultades por Sede",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/facultades/sede/{{sedeId}}"
+      }
+    },
+    {
+      "name": "📘 Obtener Programas por Facultad",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/programas/facultad/{{facultadId}}"
+      }
+    },
+    {
+      "name": "👤 Obtener Candidatos por Programa",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/candidatos/programa/{{programaId}}"
+      }
+    },
+    {
+      "name": "🗳️ Registrar Voto (Correcto)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"123456789\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"programa_id\": 1,\n  \"candidato_id\": 1\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Voto sin datos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Voto duplicado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"123456789\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"programa_id\": 1,\n  \"candidato_id\": 1\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Candidato inexistente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"987654321\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"programa_id\": 1,\n  \"candidato_id\": 999\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Candidato de otro programa",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"555555555\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"programa_id\": 1,\n  \"candidato_id\": 4\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Voto sin programa_id",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"741852963\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"candidato_id\": 1\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    },
+    {
+      "name": "❌ Candidato de otra facultad",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"votante_identificacion\": \"852963741\",\n  \"sede_id\": 1,\n  \"facultad_id\": 1,\n  \"programa_id\": 1,\n  \"candidato_id\": 9999\n}"
+        },
+        "url": "{{baseUrl}}/api/votos"
+      }
+    }
+  ]
+}
