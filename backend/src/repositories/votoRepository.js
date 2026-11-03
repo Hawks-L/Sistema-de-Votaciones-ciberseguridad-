@@ -1,4 +1,8 @@
 import { supabase } from "../config/supabase.js";
+import { AppError } from "../utils/AppError.js";
+
+// Código de PostgreSQL para violación de una restricción UNIQUE.
+const UNIQUE_VIOLATION = "23505";
 
 export const findVoteByIdentificacion = async (identificacion) => {
   const { data, error } = await supabase
@@ -18,6 +22,9 @@ export const saveVote = async (payload) => {
     .select()
     .single();
 
+  if (error?.code === UNIQUE_VIOLATION) {
+    throw new AppError("Este votante ya registró un voto", 409);
+  }
   if (error) throw new Error(error.message);
   return data;
 };

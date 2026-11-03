@@ -16,7 +16,7 @@ export const findCandidatoById = async (candidatoId) => {
     .from("candidatos")
     .select("*")
     .eq("id", candidatoId)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
   return data;
