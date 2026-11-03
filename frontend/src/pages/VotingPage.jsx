@@ -131,7 +131,8 @@ export default function VotingPage() {
       setProgramas([]);
       setCandidatos([]);
     } catch (error) {
-      setMessage(error.response?.data?.message || "No fue posible registrar el voto");
+      const data = error.response?.data;
+      setMessage(data?.errors?.[0]?.mensaje || data?.message || "No fue posible registrar el voto");
     }
   };
 

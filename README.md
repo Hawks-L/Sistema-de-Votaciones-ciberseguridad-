@@ -1,8 +1,10 @@
 # Sistema de Votaciones Universitarias
 
+[![Backend](https://github.com/Hawks-L/Sistema-de-Votaciones-ciberseguridad-/actions/workflows/backend.yml/badge.svg)](https://github.com/Hawks-L/Sistema-de-Votaciones-ciberseguridad-/actions/workflows/backend.yml)
+
 Aplicación web para elecciones estudiantiles por sede, facultad y programa. El votante elige su sede, su facultad y su programa, ve solo los candidatos que le corresponden y emite un único voto con su número de identificación.
 
-Además del desarrollo, el proyecto incluye un **análisis de seguridad** del propio sistema: qué controles tiene, qué riesgos siguen abiertos y cómo se van a mitigar.
+Además del desarrollo, el proyecto incluye un **análisis de seguridad** del propio sistema: los riesgos encontrados, los controles implementados para mitigarlos, las pruebas que los verifican y lo que queda pendiente.
 
 ## Arquitectura
 
@@ -28,7 +30,8 @@ El backend sigue una arquitectura por capas: las **rutas** reciben la petición,
 | Backend | Node.js, Express 5 |
 | Base de datos | Supabase (PostgreSQL) |
 | Entorno | DevContainer (Node 20) |
-| Pruebas de API | Colección de Postman incluida |
+| Seguridad | Helmet, express-rate-limit, Zod, CORS con lista blanca |
+| Pruebas | Node test runner, Supertest, colección de Postman, GitHub Actions |
 
 ## API
 
@@ -65,6 +68,7 @@ Necesitas Node.js 20 y un proyecto de Supabase con las tablas de sedes, facultad
 cd backend
 cp .env.example .env   # completa SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
 npm install
+# aplica db/migrations/001_voto_unico.sql en el editor SQL de Supabase
 npm run dev            # http://localhost:3001
 
 # Frontend (en otra terminal)
@@ -79,28 +83,36 @@ También puedes abrir el repositorio en VS Code con **Dev Containers** y las dep
 
 ### Controles implementados
 
-| Control | Dónde |
-| --- | --- |
-| Un solo voto por número de identificación | `votoService.registerVote` consulta si ya existe un voto antes de guardar |
-| El candidato debe pertenecer a la facultad y al programa elegidos | `votoService.registerVote` |
-| Campos obligatorios validados en el servidor, no solo en el formulario | `votoService.registerVote` |
-| La clave de Supabase vive solo en el backend y nunca llega al navegador | `config/supabase.js` y `.env` ignorado por git |
-| Acceso a datos centralizado en repositorios, sin SQL armado a mano | Cliente de Supabase con consultas parametrizadas |
+| Control | Riesgo que mitiga | Dónde |
+| --- | --- | --- |
+| Restricción `UNIQUE` sobre la identificación del votante | Doble voto por condición de carrera entre la verificación y la inserción | [`db/migrations/001_voto_unico.sql`](backend/db/migrations/001_voto_unico.sql) y `votoRepository.saveVote` |
+| Validación estricta con Zod: identificación de 6 a 12 dígitos, ids enteros positivos y rechazo de campos extra | Inyección de datos inesperados y asignación masiva | [`schemas/`](backend/src/schemas) y `middlewares/validate.js` |
+| Límite de 5 intentos de voto por IP cada 15 minutos y 100 peticiones generales | Automatización y fuerza bruta de identificaciones | `middlewares/security.js` |
+| CORS con lista blanca de orígenes | Llamadas a la API desde sitios de terceros | `middlewares/security.js` |
+| Cabeceras HTTP de seguridad con Helmet (CSP, `nosniff`, sin `X-Powered-By`) | Clickjacking, sniffing de contenido y huella del servidor | `middlewares/security.js` |
+| Manejo centralizado de errores: mensajes genéricos al cliente y detalle solo en el log | Fuga de información interna de la base de datos | `middlewares/errorHandler.js` |
+| Límite de 10 KB en el cuerpo de las peticiones | Denegación de servicio con cuerpos grandes | `app.js` |
+| El candidato debe pertenecer a la facultad y al programa elegidos | Votos fuera de la circunscripción del votante | `votoService.registerVote` |
+| La clave de Supabase vive solo en el backend y `.env` está ignorado por git | Exposición de credenciales | `config/supabase.js` |
+| Dependencias auditadas con `npm audit` en cada push | Vulnerabilidades conocidas en librerías | [GitHub Actions](.github/workflows/backend.yml) |
 
-### Riesgos identificados y plan de mitigación
+### Riesgos pendientes
 
 | Riesgo | Severidad | Mitigación planeada |
 | --- | --- | --- |
-| **Suplantación:** cualquiera que conozca un número de identificación puede votar por esa persona, porque no hay autenticación. | Alta | Autenticación del votante (correo institucional con código de un solo uso o JWT). |
-| **Condición de carrera en el doble voto:** dos peticiones simultáneas con la misma identificación pueden pasar la verificación antes de que se guarde la primera. | Alta | Restricción `UNIQUE` sobre `votante_identificacion` en la base de datos y manejo del error de duplicado. |
-| **Automatización y fuerza bruta:** no hay límite de peticiones en `POST /api/votos`. | Media | `express-rate-limit` por IP en la ruta de votos. |
-| **CORS abierto:** `cors()` acepta peticiones desde cualquier origen. | Media | Lista blanca con el dominio del frontend. |
-| **Validación de tipos:** los campos solo se revisan como obligatorios, no como números o identificaciones válidas. | Media | Esquemas de validación (por ejemplo, Zod) en cada ruta. |
-| **Fuga de información en errores:** los mensajes de error de la base de datos se devuelven tal cual al cliente. | Baja | Mensajes genéricos al cliente y detalle solo en los logs del servidor. |
-| **Cabeceras HTTP de seguridad ausentes.** | Baja | `helmet`. |
-| **Privilegios de la clave:** el backend usa la `service_role` key, que ignora las políticas RLS de Supabase. | Baja | Políticas RLS y una clave con el mínimo privilegio necesario. |
+| **Suplantación:** cualquiera que conozca un número de identificación puede votar por esa persona, porque no hay autenticación. El rate limiting lo dificulta, pero no lo impide. | Alta | Autenticación del votante con correo institucional y código de un solo uso. |
+| **Privilegios de la clave:** el backend usa la `service_role` key, que ignora las políticas RLS de Supabase. | Media | Políticas RLS y una clave con el mínimo privilegio necesario. |
 
-Este análisis sigue las categorías del [OWASP Top 10](https://owasp.org/Top10/): fallas de autenticación (A07), control de acceso (A01), diseño inseguro (A04) y configuración de seguridad (A05).
+El análisis sigue las categorías del [OWASP Top 10](https://owasp.org/Top10/): control de acceso (A01), diseño inseguro (A04), configuración de seguridad (A05), componentes vulnerables (A06) y fallas de autenticación (A07).
+
+### Pruebas de seguridad
+
+`backend/test/seguridad.test.js` comprueba con Node test runner y Supertest que la API envía las cabeceras de seguridad, que CORS rechaza orígenes externos, que se rechazan ids e identificaciones inválidas (incluido `1 OR 1=1`), que el JSON mal formado no filtra detalles internos y que el límite de intentos se aplica. Corren en cada push con GitHub Actions.
+
+```bash
+cd backend
+npm test
+```
 
 ## Autor
 
